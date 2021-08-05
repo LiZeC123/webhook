@@ -99,13 +99,7 @@ func handleWebHook(writer http.ResponseWriter, request *http.Request) {
 			setRunning(appStatus)
 			execShell(config.WorkDir, config.Cmd)
 			setDone(appStatus)
-		}
-	}
-
-	for i := 0; i < len(configs); i++ {
-		if configs[i].AppName == appName && configs[i].Type == appType {
-
-
+			writeDone(writer)
 			return
 		}
 	}
@@ -124,6 +118,10 @@ func writeIndexFile(w http.ResponseWriter, r *http.Request) {
 
 func writeError(w http.ResponseWriter, r *http.Request, msg string) {
 	_, _ = fmt.Fprintf(w, msg)
+}
+
+func writeDone(w http.ResponseWriter)  {
+	_, _ = fmt.Fprintf(w, "Done")
 }
 
 func execShell(workDir string, cmd []string) {
