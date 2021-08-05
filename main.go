@@ -42,7 +42,7 @@ func main() {
 	// handler是异步执行的
 	http.HandleFunc("/", handleWebHook)
 
-	err := http.ListenAndServe(":3000", nil)
+	err := http.ListenAndServe(":3080", nil)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -72,7 +72,7 @@ func loadConfig() {
 
 func initStatus() {
 	for _, config := range configs {
-		status[config.AppName] = &AppStatus{AppName: config.AppName, Status: STATUS_DONE, Time: time.Now().Format("2006-01-02 15:04:05")}
+		status[config.AppName] = &AppStatus{AppName: config.AppName, Status: STATUS_DONE, Time: nowString()}
 	}
 }
 
@@ -84,10 +84,7 @@ func handleWebHook(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	//fmt.Printf("URL = %s Config=%v\n", request.URL.RequestURI(), configs)
 	value := strings.Split(URI, "/")
-	//fmt.Print(value)
-
 	// "/A/B" -> ["", "A", "B"]
 	if len(value) != 3 {
 		writeError(writer, request, "参数数量不正确")
@@ -96,19 +93,19 @@ func handleWebHook(writer http.ResponseWriter, request *http.Request) {
 
 	var appType = value[1]
 	var appName = value[2]
-	fmt.Printf("type=%s, name=%s", appType, appName)
-
 	for _, config := range configs {
 		if config.AppName == appName && config.Type == appType {
 			appStatus := status[config.AppName]
-			appStatus.Status = STATUS_RUN
+			setRunning(appStatus)
+			execShell(config.WorkDir, config.Cmd)
+			setDone(appStatus)
 		}
 	}
 
 	for i := 0; i < len(configs); i++ {
 		if configs[i].AppName == appName && configs[i].Type == appType {
 
-			execShell(configs[i].WorkDir, configs[i].Cmd)
+
 			return
 		}
 	}
@@ -137,4 +134,18 @@ func execShell(workDir string, cmd []string) {
 	log.Printf("Do Command: %s", fullCommand)
 
 	_ = exec.Command("bash", "-c", fullCommand).Run()
+}
+
+func nowString() string {
+	return time.Now().Format("2006-01-02 15:04:05")
+}
+
+func setRunning(appStatus *AppStatus)  {
+	appStatus.Status = STATUS_RUN
+	appStatus.Time = nowString()
+}
+
+func setDone(appStatus *AppStatus)  {
+	appStatus.Status = STATUS_DONE
+	appStatus.Time = nowString()
 }
