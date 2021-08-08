@@ -29,6 +29,7 @@ type AppConfig struct {
 
 type AppStatus struct {
 	AppName string
+	Type    string
 	Status  string
 	Time    string
 }
@@ -72,7 +73,7 @@ func loadConfig() {
 
 func initStatus() {
 	for _, config := range configs {
-		status[config.AppName] = &AppStatus{AppName: config.AppName, Status: STATUS_DONE, Time: nowString()}
+		status[config.AppName] = &AppStatus{AppName: config.AppName, Type: config.Type, Status: STATUS_DONE, Time: nowString()}
 	}
 }
 
@@ -109,18 +110,34 @@ func handleWebHook(writer http.ResponseWriter, request *http.Request) {
 }
 
 func writeIndexFile(w http.ResponseWriter, r *http.Request) {
-	_, _ = fmt.Fprintf(w, "%-15s\t%-10s\t%-15s\n", "AppName", "Status", "Time")
+	var html = "<table border=\"1\">" +
+		"<tr><th>AppName</th><th>Status</th><th>Operation</th><th>Update Time</th></tr>"
 
+	// _, _ = fmt.Fprintf(w, "%-15s\t%-10s\t%-15s\n", "AppName", "Status", "Time")
+
+	var row = make([]string, len(status))
 	for _, s := range status {
-		_, _ = fmt.Fprintf(w, "%-15s\t%-10s\t%-15s\n", s.AppName, s.Status, s.Time)
+		var template = "<tr><td>#AppName#</td><td>#AppStatus#</td><td>#Action#</td><td>#Time#</td></tr>"
+		template = strings.Replace(template, "#AppName#", s.AppName, 1)
+		template = strings.Replace(template, "#AppStatus#", s.Status, 1)
+		var action = "<a href ='#path#' target='_Blank'>Trigger</a>"
+		action = strings.Replace(action, "#path#", "/"+s.Type+"/"+s.AppName, 1)
+		template = strings.Replace(template, "#Action#", action, 1)
+		template = strings.Replace(template, "#Time#", s.Time, 1)
+		row = append(row, template)
 	}
+
+	html = html + strings.Join(row, "\n") + "</table>"
+
+	_, _ = fmt.Fprint(w, html)
+
 }
 
 func writeError(w http.ResponseWriter, r *http.Request, msg string) {
 	_, _ = fmt.Fprintf(w, msg)
 }
 
-func writeDone(w http.ResponseWriter)  {
+func writeDone(w http.ResponseWriter) {
 	_, _ = fmt.Fprintf(w, "Done")
 }
 
@@ -138,12 +155,12 @@ func nowString() string {
 	return time.Now().Format("2006-01-02 15:04:05")
 }
 
-func setRunning(appStatus *AppStatus)  {
+func setRunning(appStatus *AppStatus) {
 	appStatus.Status = STATUS_RUN
 	appStatus.Time = nowString()
 }
 
-func setDone(appStatus *AppStatus)  {
+func setDone(appStatus *AppStatus) {
 	appStatus.Status = STATUS_DONE
 	appStatus.Time = nowString()
 }
