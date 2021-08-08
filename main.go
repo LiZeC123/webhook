@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -18,10 +19,9 @@ type Config struct {
 }
 
 type AppConfig struct {
-	AppName string
-	Type    string
-	WorkDir string
-	Cmd     []string
+	AppName  string
+	Type     string
+	Template string
 }
 
 var configs Config
@@ -82,7 +82,7 @@ func handleWebHook(_ http.ResponseWriter, request *http.Request) {
 	for _, config := range configs.Config {
 		if config.AppName == appName && config.Type == appType {
 			log.Printf("开始执行请求 -->  App:%s Type:%s", appName, appType)
-			execShell(config.WorkDir, config.Cmd)
+			execShell(config.AppName, config.Template)
 			log.Printf("请求执行结束")
 			return
 		}
@@ -91,11 +91,8 @@ func handleWebHook(_ http.ResponseWriter, request *http.Request) {
 	log.Printf("未注册的操作 --> App:%s Type:%s", appName, appType)
 }
 
-func execShell(workDir string, cmd []string) {
-	var fullCommand = "cd " + workDir + ";"
-	for i := 0; i < len(cmd); i++ {
-		fullCommand = fullCommand + cmd[i] + ";"
-	}
+func execShell(appName string, template string) {
+	var fullCommand = fmt.Sprintf("./command/%s %s", template, appName)
 	log.Printf("执行指令: %s", fullCommand)
 
 	_ = exec.Command("bash", "-c", fullCommand).Run()
