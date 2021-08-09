@@ -94,11 +94,11 @@ func execShell(config AppConfig) {
 	log.Printf("开始执行请求 -->  App:%s Type:%s", config.AppName, config.Type)
 
 	var fullCommand = fmt.Sprintf("./command/%s %s", config.Template, config.AppName)
-	log.Printf("执行指令: %s", fullCommand)
 
-	_ = exec.Command("bash", "-c", fullCommand).Run()
+	var cmd = exec.Command("bash", "-c", fullCommand)
 
-	log.Printf("请求执行结束")
+	output, _ := cmd.Output()
+	log.Printf("执行指令: %s\n执行过程中的输出:\n%s\n", fullCommand, string(output))
 }
 
 func writeDone(w http.ResponseWriter) {
