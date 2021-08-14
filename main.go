@@ -60,7 +60,7 @@ func loadConfig() {
 	log.Printf("Load Config: %v\n", configs)
 }
 
-func handleWebHook(_ http.ResponseWriter, request *http.Request) {
+func handleWebHook(w http.ResponseWriter, request *http.Request) {
 	var URI = request.URL.RequestURI()
 	log.Println("接受请求: " + URI)
 
@@ -81,9 +81,8 @@ func handleWebHook(_ http.ResponseWriter, request *http.Request) {
 	var appName = value[3]
 	for _, config := range configs.Config {
 		if config.AppName == appName && config.Type == appType {
-			log.Printf("开始执行请求 -->  App:%s Type:%s", appName, appType)
-			execShell(config.AppName, config.Template)
-			log.Printf("请求执行结束")
+			go execShell(config)
+			writeDone(w)
 			return
 		}
 	}
@@ -91,9 +90,17 @@ func handleWebHook(_ http.ResponseWriter, request *http.Request) {
 	log.Printf("未注册的操作 --> App:%s Type:%s", appName, appType)
 }
 
-func execShell(appName string, template string) {
-	var fullCommand = fmt.Sprintf("./command/%s %s", template, appName)
-	log.Printf("执行指令: %s", fullCommand)
+func execShell(config AppConfig) {
+	log.Printf("开始执行请求 -->  App:%s Type:%s", config.AppName, config.Type)
 
-	_ = exec.Command("bash", "-c", fullCommand).Run()
+	var fullCommand = fmt.Sprintf("./command/%s %s", config.Template, config.AppName)
+
+	var cmd = exec.Command("bash", "-c", fullCommand)
+
+	output, _ := cmd.Output()
+	log.Printf("执行指令: %s\n执行过程中的输出:\n%s\n", fullCommand, string(output))
+}
+
+func writeDone(w http.ResponseWriter) {
+	fmt.Fprint(w, "Accepted.")
 }
