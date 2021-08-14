@@ -13,7 +13,9 @@ function stopService() {
 }
 
 function backup() {
+  echo "Backup Webhook..."
   zip -r webhook.zip command/ config.json
+  echo "done."
 }
 
 if [ "$1"x == "start"x ]; then
