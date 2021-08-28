@@ -1,3 +1,5 @@
 .idea
 config.json
 command/*.sh
+log.txt
+webhook
