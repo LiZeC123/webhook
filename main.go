@@ -98,9 +98,15 @@ func execShell(config AppConfig) {
 	var cmd = exec.Command("bash", "-c", fullCommand)
 
 	output, _ := cmd.Output()
-	log.Printf("执行指令: %s\n执行过程中的输出:\n%s\n", fullCommand, string(output))
+
+	fileLog := OpenLog(config.AppName)
+	fileLog.LogOnce(fmt.Sprintf("执行指令: %s\n执行过程中的输出:\n%s", fullCommand, string(output)))
+
 }
 
 func writeDone(w http.ResponseWriter) {
-	fmt.Fprint(w, "Accepted.")
+	_, err := fmt.Fprint(w, "Accepted.")
+	if err != nil {
+		return
+	}
 }
