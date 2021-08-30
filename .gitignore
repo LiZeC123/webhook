@@ -3,3 +3,5 @@ config.json
 command/*.sh
 !command/Test.sh
 log
+log.txt
+webhook
