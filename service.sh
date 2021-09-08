@@ -7,7 +7,6 @@ function runService() {
 }
 
 function stopService() {
-  echo "Kill Current Service"
   pid=$(pgrep -f "webhook")
   kill "$pid"
 }
