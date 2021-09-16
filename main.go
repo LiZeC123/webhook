@@ -80,7 +80,7 @@ func handleWebHook(w http.ResponseWriter, request *http.Request) {
 
 	for _, config := range configs.Config {
 		if config.AppName == appName && config.Type == appType {
-			if appType == "System" {
+			if appName == "System" {
 				writeMessage(w, execShell(config))
 			} else {
 				go execShell(config)
