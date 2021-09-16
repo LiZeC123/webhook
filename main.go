@@ -11,8 +11,6 @@ import (
 	"strings"
 )
 
-// GithubHook UserHook
-
 type Config struct {
 	Token  string
 	Config []AppConfig
@@ -79,10 +77,15 @@ func handleWebHook(w http.ResponseWriter, request *http.Request) {
 
 	var appType = value[2]
 	var appName = value[3]
+
 	for _, config := range configs.Config {
 		if config.AppName == appName && config.Type == appType {
-			go execShell(config)
-			writeDone(w)
+			if appType == "System" {
+				writeMessage(w, execShell(config))
+			} else {
+				go execShell(config)
+				writeDone(w)
+			}
 			return
 		}
 	}
@@ -90,7 +93,7 @@ func handleWebHook(w http.ResponseWriter, request *http.Request) {
 	log.Printf("未注册的操作 --> App:%s Type:%s", appName, appType)
 }
 
-func execShell(config AppConfig) {
+func execShell(config AppConfig) []byte {
 	log.Printf("开始执行请求 -->  App:%s Type:%s", config.AppName, config.Type)
 
 	var fullCommand = fmt.Sprintf("./command/%s %s", config.Template, config.AppName)
@@ -101,11 +104,18 @@ func execShell(config AppConfig) {
 
 	fileLog := OpenLog(config.AppName)
 	fileLog.LogOnce(fmt.Sprintf("执行指令: %s\n执行过程中的输出:\n%s", fullCommand, string(output)))
-
+	return output
 }
 
 func writeDone(w http.ResponseWriter) {
 	_, err := fmt.Fprint(w, "Accepted.")
+	if err != nil {
+		return
+	}
+}
+
+func writeMessage(w http.ResponseWriter, msg []byte) {
+	_, err := fmt.Fprint(w, msg)
 	if err != nil {
 		return
 	}

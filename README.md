@@ -10,14 +10,19 @@ WebHook
   "Token": "fHxs3dsA",
   "Config": [
     {
-      "appName": "<AppType>",
-      "type": "<Type>",
-      "template": "Test.sh"
+      "appName": "<自定义应用名>",
+      "type": "<自定义类型>",
+      "template": "<Shell文件名>"
     },
     {
       "appName": "Blog",
       "type": "GithubHook",
-      "template": "Test.sh"
+      "template": "Update.sh"
+    },
+    {
+      "appName": "System",
+      "type": "User",
+      "template": "SystemInfo.sh"
     }
   ]
 }

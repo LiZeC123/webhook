@@ -2,6 +2,7 @@
 config.json
 command/*.sh
 !command/Test.sh
+!command/SystemInfo.sh
 log
 log.txt
 webhook
