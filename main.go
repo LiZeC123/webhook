@@ -93,7 +93,7 @@ func handleWebHook(w http.ResponseWriter, request *http.Request) {
 	log.Printf("未注册的操作 --> App:%s Type:%s", appName, appType)
 }
 
-func execShell(config AppConfig) []byte {
+func execShell(config AppConfig) string {
 	log.Printf("开始执行请求 -->  App:%s Type:%s", config.AppName, config.Type)
 
 	var fullCommand = fmt.Sprintf("./command/%s %s", config.Template, config.AppName)
@@ -101,10 +101,10 @@ func execShell(config AppConfig) []byte {
 	var cmd = exec.Command("bash", "-c", fullCommand)
 
 	output, _ := cmd.Output()
-
+	msg := string(output)
 	fileLog := OpenLog(config.AppName)
-	fileLog.LogOnce(fmt.Sprintf("执行指令: %s\n执行过程中的输出:\n%s", fullCommand, string(output)))
-	return output
+	fileLog.LogOnce(fmt.Sprintf("执行指令: %s\n执行过程中的输出:\n%s", fullCommand, msg))
+	return msg
 }
 
 func writeDone(w http.ResponseWriter) {
@@ -114,7 +114,7 @@ func writeDone(w http.ResponseWriter) {
 	}
 }
 
-func writeMessage(w http.ResponseWriter, msg []byte) {
+func writeMessage(w http.ResponseWriter, msg string) {
 	_, err := fmt.Fprint(w, msg)
 	if err != nil {
 		return
