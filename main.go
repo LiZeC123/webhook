@@ -24,11 +24,16 @@ type AppConfig struct {
 
 var configs Config
 
+var c = make(chan AppConfig, 10)
+
+var currentTask = "空闲等待中..."
+
 func main() {
 	loadConfig()
 
 	// handler是异步执行的
 	http.HandleFunc("/", handleWebHook)
+	go doShellCommand()
 
 	err := http.ListenAndServe(":3080", nil)
 	if err != nil {
@@ -81,9 +86,10 @@ func handleWebHook(w http.ResponseWriter, request *http.Request) {
 	for _, config := range configs.Config {
 		if config.AppName == appName && config.Type == appType {
 			if appName == "System" {
+				writeMessage(w, fmt.Sprintf("执行器状态:%s\n\n", currentTask))
 				writeMessage(w, execShell(config))
 			} else {
-				go execShell(config)
+				c <- config
 				writeDone(w)
 			}
 			return
@@ -91,6 +97,15 @@ func handleWebHook(w http.ResponseWriter, request *http.Request) {
 	}
 
 	log.Printf("未注册的操作 --> App:%s Type:%s", appName, appType)
+}
+
+func doShellCommand() {
+	for {
+		config := <-c
+		currentTask = fmt.Sprintf("执行任务中(%s)", config.AppName)
+		execShell(config)
+		currentTask = "空闲等待中..."
+	}
 }
 
 func execShell(config AppConfig) string {
