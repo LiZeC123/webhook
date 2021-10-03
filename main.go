@@ -23,13 +23,12 @@ type AppConfig struct {
 }
 
 var configs Config
-
 var c = make(chan AppConfig, 10)
-
-var currentTask = "空闲等待中..."
+var taskManager = TaskManager{}
 
 func main() {
 	loadConfig()
+	taskManager.Init()
 
 	// handler是异步执行的
 	http.HandleFunc("/", handleWebHook)
@@ -86,7 +85,7 @@ func handleWebHook(w http.ResponseWriter, request *http.Request) {
 	for _, config := range configs.Config {
 		if config.AppName == appName && config.Type == appType {
 			if appName == "System" {
-				writeMessage(w, fmt.Sprintf("执行器状态:%s\n\n", currentTask))
+				writeMessage(w, fmt.Sprintf("执行器状态:%s\n\n", taskManager.GetFormatString()))
 				writeMessage(w, execShell(config))
 			} else {
 				c <- config
@@ -102,9 +101,9 @@ func handleWebHook(w http.ResponseWriter, request *http.Request) {
 func doShellCommand() {
 	for {
 		config := <-c
-		currentTask = fmt.Sprintf("执行任务中(%s)", config.AppName)
+		taskManager.SetTask(config.AppName)
 		execShell(config)
-		currentTask = "空闲等待中..."
+		taskManager.FinishTask()
 	}
 }
 
