@@ -1,38 +1,28 @@
 package main
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
-	"os/exec"
 	"strings"
+
+	"github.com/LiZeC123/webhook/task"
 )
 
-type Config struct {
-	Token  string
-	Config []AppConfig
-}
-
-type AppConfig struct {
-	AppName  string
-	Type     string
-	Template string
-}
-
-var configs Config
-var c = make(chan AppConfig, 10)
-var taskManager = TaskManager{}
+var config task.Config
+var c = make(chan task.Task, 10)
+var manager task.Manager
 
 func main() {
-	loadConfig()
-	taskManager.Init()
+	config.Load()
+	manager.Init()
+	go task.Daemon(c, manager)
+
+	fmt.Println(config)
 
 	// handler是异步执行的
 	http.HandleFunc("/", handleWebHook)
-	go doShellCommand()
 
 	err := http.ListenAndServe(":3080", nil)
 	if err != nil {
@@ -40,92 +30,49 @@ func main() {
 	}
 }
 
-func loadConfig() {
-	file, err := os.Open("config.json")
-	if err != nil {
-		log.Panic(err)
-	}
-
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			log.Panic(err)
-		}
-	}(file)
-
-	content, _ := ioutil.ReadAll(file)
-	err = json.Unmarshal(content, &configs)
-	if err != nil {
-		log.Panic(err)
-	}
-
-	log.Printf("Load Config: %v\n", configs)
-}
-
 func handleWebHook(w http.ResponseWriter, request *http.Request) {
 	var URI = request.URL.RequestURI()
 	log.Println("接受请求: " + URI)
 
-	value := strings.Split(URI, "/")
-	// "/Token/Type/AppName" -> ["", "Token", "Type", "AppName"]
-	if len(value) != 4 {
-		log.Print("参数数量不正确, 忽略请求")
+	req, err := parseRequest(URI)
+	if err != nil {
+		log.Printf("%s, 忽略此请求\n", err.Error())
 		return
+	}
+
+	m, err := config.Match(req)
+	if err != nil {
+		log.Printf("%s --> App:%s Type:%s", err.Error(), req.Name, req.Type)
+	} else {
+		log.Printf("开始执行请求 -->  App:%s Type:%s", req.Name, req.Type)
+	}
+
+	var msg string
+	if m.Background {
+		// 后台任务发送信息异步执行
+		c <- m
+		msg = "Accepted."
+	} else {
+		// 前台任务直接在当前线程执行
+		msg = m.ExecShell(manager)
+	}
+
+	writeMessage(w, msg)
+}
+
+func parseRequest(URI string) (task.Task, error) {
+	// "/Token/Type/AppName" -> ["", "Token", "Type", "AppName"]
+	value := strings.Split(URI, "/")
+	if len(value) != 4 {
+		return task.Task{}, errors.New("参数数量不正确")
 	}
 
 	var token = value[1]
-	if token != configs.Token {
-		log.Print("Token错误, 忽略请求")
-		return
+	if token != config.Token {
+		return task.Task{}, errors.New("Token不匹配")
 	}
 
-	var appType = value[2]
-	var appName = value[3]
-
-	for _, config := range configs.Config {
-		if config.AppName == appName && config.Type == appType {
-			if appName == "System" {
-				writeMessage(w, fmt.Sprintf("执行器状态:%s\n\n", taskManager.GetFormatString()))
-				writeMessage(w, execShell(config))
-			} else {
-				c <- config
-				writeDone(w)
-			}
-			return
-		}
-	}
-
-	log.Printf("未注册的操作 --> App:%s Type:%s", appName, appType)
-}
-
-func doShellCommand() {
-	for {
-		config := <-c
-		taskManager.SetTask(config.AppName)
-		execShell(config)
-		taskManager.FinishTask()
-	}
-}
-
-func execShell(config AppConfig) string {
-	log.Printf("开始执行请求 -->  App:%s Type:%s", config.AppName, config.Type)
-
-	var fullCommand = fmt.Sprintf("./command/%s %s", config.Template, config.AppName)
-
-	var cmd = exec.Command("bash", "-c", fullCommand)
-
-	output, _ := cmd.Output()
-	msg := string(output)
-	fileLog := OpenLog(config.AppName)
-	fileLog.LogOnce(fmt.Sprintf("执行指令: %s\n执行过程中的输出:\n%s", fullCommand, msg))
-	return msg
-}
-
-func writeDone(w http.ResponseWriter) {
-	_, err := fmt.Fprint(w, "Accepted.")
-	if err != nil {
-		return
-	}
+	return task.Task{Name: value[3], Type: value[2]}, nil
 }
 
 func writeMessage(w http.ResponseWriter, msg string) {
