@@ -15,17 +15,14 @@ type Task struct {
 
 func Daemon(c <-chan Task, m Manager) {
 	for task := range c {
-
+		m.SetTask(task.Name)
 		task.ExecShell(m)
 		m.FinishTask()
 	}
 }
 
 func (task Task) ExecShell(m Manager) string {
-	m.SetTask(task.Name)
-	defer m.FinishTask()
-
-	msg := fmt.Sprintf("执行器状态:%s\n\n", m.ToString())
+	msg := fmt.Sprintf("<p>执行器状态:%s</p>", m.ToString())
 
 	var fullCommand = fmt.Sprintf("./command/%s %s", task.Template, task.Name)
 	var cmd = exec.Command("bash", "-c", fullCommand)
