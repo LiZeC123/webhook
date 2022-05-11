@@ -21,6 +21,8 @@ echo "</pre>"
 echo "应用负载统计"
 echo "<pre style='word-wrap: break-word; white-space: pre-wrap;'>"
 docker stats --no-stream
+echo "<hr />"
+docker ps
 echo "</pre>"
 
 echo "磁盘使用量统计"
